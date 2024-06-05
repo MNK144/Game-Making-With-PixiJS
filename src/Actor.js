@@ -1,6 +1,6 @@
 import Game from "./Game.js";
 import Item from "./Item.js";
-import { BASE_FORCE } from "./config.js";
+import { BASE_FORCE, CHILLY_MULTIPLIER } from "./config.js";
 import Collision, {  } from "./core/Collision.js";
 
 class Actor {
@@ -29,17 +29,26 @@ class Actor {
     RIGHT: false,
   };
 
-  constructor(type, texture, x, y, scale, app) {
+  constructor(type, texture, x, y, scale) {
     this.actor = new PIXI.Sprite(texture);
+    this.textures = {};
+    this.primaryTexture = texture;
     this.actor.anchor.set(0.5);
     this.actor.x = x;
     this.actor.y = y;
     this.actor.scale.set(scale);
-    this.app = app;
 
     this.type = type;
     this.xForce = 0;
     this.yForce = 0;
+    this.forceMultiplier = 1;
+
+    //For Powerups
+    this.powerUps = {};
+  }
+
+  configAdditionalTextures(name, texture) {
+    this.textures[name] = texture;
   }
 
   setCollisions(x, y, width, height) {
@@ -56,10 +65,30 @@ class Actor {
   handleItemInteraction(collidedObject) {
     switch(collidedObject.object.type) { // Item Type
       case Item.Type.CARROT: {
-        this.app.stage.removeChild(collidedObject.object.item);
+        console.log("ITEM PICKED: CARROT")
+        Game.app.stage.removeChild(collidedObject.object.item);
         delete collidedObject.object;
         collidedObject.graphics.destroy();
         Game.removeCollision(collidedObject);
+        Game.setScore(100);
+        break;
+      }
+      case Item.Type.CHILLY: {
+        console.log("ITEM PICKED: CHILLY")
+        Game.app.stage.removeChild(collidedObject.object.item);
+        delete collidedObject.object;
+        collidedObject.graphics.destroy();
+        Game.removeCollision(collidedObject);
+        Game.setScore(500);
+
+        //Applying Speed Effect
+        this.actor.texture = this.textures["bunnyFast"];
+        this.forceMultiplier = CHILLY_MULTIPLIER;
+        if(this.powerUps["chilly"]) clearTimeout(this.powerUps["chilly"]);
+        this.powerUps["chilly"] = setTimeout(() => {
+          this.forceMultiplier = 1;
+          this.actor.texture = this.primaryTexture;
+        }, 5000);
         break;
       }
       default: {
@@ -115,7 +144,7 @@ class Actor {
       BASE_FORCE * (this.isMoving.DOWN ? 1 : 0) - BASE_FORCE * (this.isMoving.UP ? 1 : 0),
       Actor.INPUT_MODE.SET
     )
-    this.transform(this.xForce * delta, this.yForce * delta);
+    this.transform(this.xForce * this.forceMultiplier * delta, this.yForce * this.forceMultiplier * delta);
   }
 }
 

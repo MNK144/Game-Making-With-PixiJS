@@ -1,12 +1,36 @@
 import Actor from "./Actor.js";
 import Item from "./Item.js";
+import { SCORE_TEXT_X, SCORE_TEXT_Y } from "./config.js";
 import Collision from "./core/Collision.js";
 import DebugUtils from "./utils/Debug.js";
 const Assets = PIXI.Assets;
 
 class Game {
+  static app = null;
+  static score = 0;
+  static scoreText = null;
   static gameOver = false;
   static collisions = [];
+
+  /**
+ * Sets the score of the game.
+ *
+ * @param {number} score - The score to be set.
+ * @param {"ADD" | "SET"} inputMode - The mode in which the score is set. It can be "ADD" or "SET".
+ * @return {void} This function does not return anything.
+ */
+  static setScore(score, inputMode = "ADD") {
+    if(!this.scoreText) {
+      console.error("Game not started yet");
+      return;
+    }
+    if(inputMode == "ADD") {
+      this.score += score;
+    } else {
+      this.score = score;
+    }
+    this.scoreText.text = `Score: ${this.score}`
+  }
 
   /**
    * Checks for collisions within a given rectangle.
@@ -80,9 +104,18 @@ class Game {
   }
 
   static async start(app) {
+    this.app = app;
     this.gameOver = false;
     const bunnyTexture = await Assets.load("/assets/bunny.png");
     const carrotTexture = await Assets.load("/assets/carrot.png");
+    const chillyTexture = await Assets.load("/assets/chilly.png");
+    const bunnyFastTexture = await Assets.load("/assets/bunny_fast.png");
+
+    // Setting Score on Screen
+    this.scoreText = new PIXI.Text(`Score: ${this.score}`);
+    this.scoreText.x = SCORE_TEXT_X;
+    this.scoreText.y = SCORE_TEXT_Y;
+    app.stage.addChild(this.scoreText);
 
     //Creating World Boundary
     this.collisions.push(new Collision(
@@ -115,6 +148,28 @@ class Game {
         )
       );
     }
+    //Adding Chilli Items
+    for (let i = 0; i < 2; i++) {
+      const chillyX = Math.random() * (app.screen.width - 60) + 30;
+      const chillyY = Math.random() * (app.screen.height - 60) + 30;
+      const chilly = new Item(
+        Item.Type.CHILLY,
+        chillyTexture,
+        chillyX,
+        chillyY,
+        0.2
+      );
+      app.stage.addChild(chilly.item);
+      console.log("Chilly Object Created", chillyX, chillyY);
+      this.collisions.push(
+        chilly.setCollisions(
+          chillyX - chilly.item.width / 2 + 30,
+          chillyY - chilly.item.height / 2 + 30,
+          chilly.item.width - 60,
+          chilly.item.height - 60
+        )
+      );
+    }
 
     //Adding Main Character
     const bunny = new Actor(
@@ -123,8 +178,8 @@ class Game {
       app.screen.width / 2,
       app.screen.height / 2,
       1.6,
-      app
     );
+    bunny.configAdditionalTextures("bunnyFast", bunnyFastTexture);
     app.stage.addChild(bunny.actor);
     bunny.setCollisions(
       bunny.actor.x - bunny.actor.width / 2,

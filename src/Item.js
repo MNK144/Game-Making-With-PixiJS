@@ -3,6 +3,7 @@ import Collision from "./core/Collision.js";
 class Item {
   static Type = {
     CARROT: "carrot",
+    CHILLY: "chilly",
   }
   constructor(type, texture, x, y, scale) {
     this.type = type;
