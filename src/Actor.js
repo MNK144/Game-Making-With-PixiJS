@@ -1,10 +1,26 @@
+import Game from "./Game.js";
+import Item from "./Item.js";
 import { BASE_FORCE } from "./config.js";
+import Collision, {  } from "./core/Collision.js";
 
 class Actor {
   static INPUT_MODE = {
     ADD: 0,
     SET: 1,
   };
+  static Type = {
+    PLAYER: "player",
+    ENEMY: "enemy",
+  }
+
+  collision = {
+    graphics: null,
+    type: null,
+    x: null,
+    y: null,
+    width: null,
+    height: null,
+  }
 
   isMoving = {
     UP: false,
@@ -13,36 +29,71 @@ class Actor {
     RIGHT: false,
   };
 
-  constructor(screen, texture, x, y, scale) {
+  constructor(type, texture, x, y, scale, app) {
     this.actor = new PIXI.Sprite(texture);
     this.actor.anchor.set(0.5);
-    // Move the sprite to the center of the screen
     this.actor.x = x;
     this.actor.y = y;
     this.actor.scale.set(scale);
+    this.app = app;
 
+    this.type = type;
     this.xForce = 0;
     this.yForce = 0;
+  }
 
-    this.xBounds = {
-      min: 0 + this.actor.width,
-      max: screen.width - this.actor.width,
-    };
-    this.yBounds = {
-      min: 0 + this.actor.height,
-      max: screen.height - this.actor.height,
-    };
+  setCollisions(x, y, width, height) {
+    this.collision = new Collision(x, y, width, height, Collision.Types.PLAYER, this);
+    return this.collision;
   }
-  getActor() {
-    return this.actor;
+
+  /**
+   * Handles the interaction with an item.
+   *
+   * @param {Collision} collidedObject - The object representing the collided item.
+   * @return {void} This function does not return anything.
+   */
+  handleItemInteraction(collidedObject) {
+    switch(collidedObject.object.type) { // Item Type
+      case Item.Type.CARROT: {
+        this.app.stage.removeChild(collidedObject.object.item);
+        delete collidedObject.object;
+        collidedObject.graphics.destroy();
+        Game.removeCollision(collidedObject);
+        break;
+      }
+      default: {
+        console.error("No such item type: ", collidedObject.object.type);
+        break;
+      }
+    }
   }
+
   transform(x, y, mode = Actor.INPUT_MODE.ADD) {
     if (mode === Actor.INPUT_MODE.ADD) {
-      if((this.actor.x + x) < (this.xBounds.max) && (this.actor.x + x) > (this.xBounds.min)) {
+      const collisionResponse = Game.checkCollisions(
+        this.collision,
+        this.collision.x + x, 
+        this.collision.y + y, 
+        this.collision.width + x, 
+        this.collision.height + y
+      );
+      if(collisionResponse.x) {
         this.actor.x += x;
+        if(this.collision) {
+          this.collision.updatePosition(x, 0);
+        } 
       }
-      if((this.actor.y + y) < (this.yBounds.max) && (this.actor.y + y) > (this.yBounds.min)) {
+      if(collisionResponse.y) {
         this.actor.y += y;
+        if(this.collision) {
+          this.collision.updatePosition(0, y);
+        }
+      }
+      for(const collidedObject of collisionResponse.collidedObjects) {
+        if(collidedObject.type === Collision.Types.ITEM) {
+          this.handleItemInteraction(collidedObject);
+        }
       }
     } else if (mode === Actor.INPUT_MODE.SET) {
       this.actor.x = x;

@@ -1,16 +1,19 @@
 import Game from "./Game.js";
+import DebugUtils from "./utils/Debug.js";
 const Application = PIXI.Application;
 
 async function main() {
   const app = new Application({
     background: "#1099bb",
-    resizeTo: document.getElementById("container"),
+    width: 1250,
+    height: 800,
+    // resizeTo: document.getElementById("container"),
     antialias: true,
     transparent: false,
   });
   document.getElementById("container").append(app.view);
   
-  const game = new Game();
-  await game.start(app);
+  DebugUtils.configDebugUtils(app);
+  await Game.start(app);
 }
 main();
